@@ -17,7 +17,7 @@ import Review.Rule as Rule exposing (Rule)
 {-| Reports uses of certain functions outside of certain modules.
 
     config =
-        [ NoFunctionOutsideOfModules.rule [ ( "Html.input", [ "View.Input" ] ) ]
+        [ NoFunctionOutsideOfModules.rule "Html.input" [ "View.Input" ]
         ]
 
 
@@ -127,6 +127,9 @@ importVisitor : List String -> String -> Node Import -> Context -> ( List (Rule.
 importVisitor forbiddenFunctionModule forbiddenFunctionName node context =
     case context of
         AllowedModule ->
+            ( [], context )
+
+        DisallowedModule (ModuleWasImported _ _) ->
             ( [], context )
 
         DisallowedModule _ ->

@@ -36,6 +36,43 @@ main =
                             , under = "Html.input"
                             }
                         ]
+        , test "should report an error when using Html.input outside of module and inside other elements" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html
+
+main : Html.Html a
+main =
+    Html.div [] [ Html.input [] [] ]
+"""
+                    |> Review.Test.run htmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "Html.input"
+                            }
+                        ]
+        , test "should report an error when using an exposed name (Html.input) outside of module and inside other elements" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html exposing (input)
+
+main : Html.Html a
+main =
+    Html.div [] [ input [] [] ]
+"""
+                    |> Review.Test.run htmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `input` function outside of the allowed modules"
+                            , details = [ "The `input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "input"
+                            }
+                            |> Review.Test.atExactly { start = { row = 7, column = 19 }, end = { row = 7, column = 24 } }
+                        ]
         , test "should report an error when using an exposed name (Html.input) outside of module" <|
             \() ->
                 """module Main exposing (main)
