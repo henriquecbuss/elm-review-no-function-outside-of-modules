@@ -11,7 +11,6 @@ import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.Node as Node exposing (Node)
-import List.Extra
 import Review.Rule as Rule exposing (Rule)
 
 
@@ -70,17 +69,17 @@ over flexibility.
 You can try this rule out by running the following command:
 
 ```bash
-elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example --rules NoFunctionOutsideOfModules
+elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view --rules NoFunctionOutsideOfModules
 ```
 
 -}
-rule : ( String, List String ) -> Rule
-rule ( forbiddenFunction, allowedModules ) =
+rule : String -> List String -> Rule
+rule forbiddenFunction allowedModules =
     let
         ( forbiddenFunctionName, forbiddenFunctionModule ) =
             forbiddenFunction
                 |> String.split "."
-                |> List.Extra.unconsLast
+                |> unconsLast
                 |> Maybe.withDefault ( "", [] )
     in
     Rule.newModuleRuleSchema "NoFunctionOutsideOfModules" AllowedModule
@@ -88,6 +87,16 @@ rule ( forbiddenFunction, allowedModules ) =
         |> Rule.withImportVisitor (importVisitor forbiddenFunctionModule forbiddenFunctionName)
         |> Rule.withExpressionEnterVisitor (expressionVisitor forbiddenFunctionName allowedModules)
         |> Rule.fromModuleRuleSchema
+
+
+unconsLast : List a -> Maybe ( a, List a )
+unconsLast list =
+    case List.reverse list of
+        [] ->
+            Nothing
+
+        first :: rest ->
+            Just ( first, List.reverse rest )
 
 
 type Context
@@ -123,12 +132,14 @@ importVisitor forbiddenFunctionModule forbiddenFunctionName node context =
         DisallowedModule _ ->
             if (Node.value node |> .moduleName |> Node.value) == forbiddenFunctionModule then
                 let
+                    moduleAlias : List String
                     moduleAlias =
                         Node.value node
                             |> .moduleAlias
                             |> Maybe.map Node.value
                             |> Maybe.withDefault forbiddenFunctionModule
 
+                    functionImportStatus : FunctionImportStatus
                     functionImportStatus =
                         case Node.value node |> .exposingList |> Maybe.map Node.value of
                             Just (Exposing.All _) ->
@@ -173,6 +184,7 @@ expressionVisitor forbiddenFunctionName allowedModules node context =
             case Node.value node of
                 Expression.FunctionOrValue moduleName functionName ->
                     let
+                        isFromModule : Bool
                         isFromModule =
                             case functionImportStatus of
                                 FunctionWasImportedExplicitly ->
@@ -181,11 +193,13 @@ expressionVisitor forbiddenFunctionName allowedModules node context =
                                 FunctionWasNotImportedExplicitly ->
                                     moduleName == moduleAlias
 
+                        isForbiddenFunction : Bool
                         isForbiddenFunction =
                             functionName == forbiddenFunctionName
                     in
                     if isFromModule && isForbiddenFunction then
                         let
+                            fullFunctionName : String
                             fullFunctionName =
                                 case functionImportStatus of
                                     FunctionWasImportedExplicitly ->

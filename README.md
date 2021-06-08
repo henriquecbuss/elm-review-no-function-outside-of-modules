@@ -25,5 +25,5 @@ config =
 You can try the example configuration above out by running the following command:
 
 ```bash
-elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example
+elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view
 ```

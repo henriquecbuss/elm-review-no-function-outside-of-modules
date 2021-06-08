@@ -1,6 +1,7 @@
 module NoFunctionOutsideOfModulesTest exposing (all)
 
 import NoFunctionOutsideOfModules exposing (rule)
+import Review.Rule exposing (Rule)
 import Review.Test
 import Test exposing (Test, describe, test)
 
@@ -8,11 +9,13 @@ import Test exposing (Test, describe, test)
 all : Test
 all =
     let
+        htmlRule : Rule
         htmlRule =
-            rule ( "Html.input", [ "View.Input" ] )
+            rule "Html.input" [ "View.Input" ]
 
+        fruitRule : Rule
         fruitRule =
-            rule ( "Json.Encode.object", [ "Fruits.Json" ] )
+            rule "Json.Encode.object" [ "Fruits.Json" ]
     in
     describe "NoFunctionOutsideOfModules"
         [ test "should report an error when using Html.input outside of module" <|
