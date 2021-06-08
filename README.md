@@ -1,10 +1,10 @@
 # elm-review-no-function-outside-of-modules
 
-Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to REPLACEME.
+Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to forbid using functions outside of certain modules.
 
 ## Provided rules
 
-- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/NeoVier/elm-review-no-function-outside-of-modules/1.0.0/NoFunctionOutsideOfModules) - Reports REPLACEME.
+- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/NeoVier/elm-review-no-function-outside-of-modules/1.0.0/NoFunctionOutsideOfModules) - Reports uses of certain functions outside of certain modules.
 
 ## Configuration
 
@@ -16,7 +16,7 @@ import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ NoFunctionOutsideOfModules.rule
+    [ NoFunctionOutsideOfModules.rule [( "Html.input", [ "View.Input" ] )]
     ]
 ```
 

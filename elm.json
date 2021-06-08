@@ -1,7 +1,7 @@
 {
     "type": "package",
     "name": "NeoVier/elm-review-no-function-outside-of-modules",
-    "summary": "",
+    "summary": "Provides elm-review rules to forbid using functions outside of certain modules",
     "license": "BSD-3-Clause",
     "version": "1.0.0",
     "exposed-modules": [
