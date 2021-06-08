@@ -6,6 +6,11 @@ module NoFunctionOutsideOfModules exposing (rule)
 
 -}
 
+import Elm.Syntax.Exposing as Exposing
+import Elm.Syntax.Expression as Expression exposing (Expression)
+import Elm.Syntax.Import exposing (Import)
+import Elm.Syntax.Module as Module exposing (Module)
+import Elm.Syntax.Node as Node exposing (Node)
 import Review.Rule as Rule exposing (Rule)
 
 
@@ -70,6 +75,117 @@ elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example 
 -}
 rule : List ( String, List String ) -> Rule
 rule _ =
-    Rule.newModuleRuleSchema "NoFunctionOutsideOfModules" ()
-        -- Add your visitors
+    Rule.newModuleRuleSchema "NoFunctionOutsideOfModules" AllowedModule
+        |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
+        |> Rule.withImportVisitor importVisitor
+        |> Rule.withExpressionEnterVisitor expressionVisitor
         |> Rule.fromModuleRuleSchema
+
+
+type Context
+    = AllowedModule
+    | DisallowedModule ModuleImportStatus
+
+
+type ModuleImportStatus
+    = ModuleWasImported (List String) FunctionImportStatus
+    | ModuleWasNotImported
+
+
+type FunctionImportStatus
+    = FunctionWasImportedExplicitly
+    | FunctionWasNotImportedExplicitly
+
+
+moduleDefinitionVisitor : Node Module -> Context -> ( List (Rule.Error {}), Context )
+moduleDefinitionVisitor node _ =
+    if (Node.value node |> Module.moduleName) == [ "View", "Input" ] then
+        ( [], AllowedModule )
+
+    else
+        ( [], DisallowedModule ModuleWasNotImported )
+
+
+importVisitor : Node Import -> Context -> ( List (Rule.Error {}), Context )
+importVisitor node context =
+    case context of
+        AllowedModule ->
+            ( [], context )
+
+        DisallowedModule _ ->
+            case Node.value node |> .moduleName |> Node.value of
+                [ "Html" ] ->
+                    let
+                        moduleAlias =
+                            Node.value node
+                                |> .moduleAlias
+                                |> Maybe.map Node.value
+                                |> Maybe.withDefault [ "Html" ]
+
+                        functionImportStatus =
+                            case Node.value node |> .exposingList |> Maybe.map Node.value of
+                                Just (Exposing.All _) ->
+                                    FunctionWasImportedExplicitly
+
+                                Just (Exposing.Explicit exposedFunctions) ->
+                                    let
+                                        isForbiddenFunction : Node Exposing.TopLevelExpose -> Bool
+                                        isForbiddenFunction exposeNode =
+                                            case Node.value exposeNode of
+                                                Exposing.FunctionExpose "input" ->
+                                                    True
+
+                                                _ ->
+                                                    False
+                                    in
+                                    if List.any isForbiddenFunction exposedFunctions then
+                                        FunctionWasImportedExplicitly
+
+                                    else
+                                        FunctionWasNotImportedExplicitly
+
+                                _ ->
+                                    FunctionWasNotImportedExplicitly
+                    in
+                    ( [], DisallowedModule (ModuleWasImported moduleAlias functionImportStatus) )
+
+                _ ->
+                    ( [], DisallowedModule ModuleWasNotImported )
+
+
+expressionVisitor : Node Expression -> Context -> ( List (Rule.Error {}), Context )
+expressionVisitor node context =
+    case context of
+        AllowedModule ->
+            ( [], context )
+
+        DisallowedModule ModuleWasNotImported ->
+            ( [], context )
+
+        DisallowedModule (ModuleWasImported moduleAlias functionImportStatus) ->
+            case Node.value node of
+                Expression.FunctionOrValue moduleName "input" ->
+                    let
+                        isFromModule =
+                            case functionImportStatus of
+                                FunctionWasImportedExplicitly ->
+                                    True
+
+                                FunctionWasNotImportedExplicitly ->
+                                    moduleName == moduleAlias
+                    in
+                    if isFromModule then
+                        ( [ Rule.error
+                                { message = "You're using the `Html.input` function outside of the allowed modules"
+                                , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\t`View.Input`" ]
+                                }
+                                (Node.range node)
+                          ]
+                        , context
+                        )
+
+                    else
+                        ( [], context )
+
+                _ ->
+                    ( [], context )

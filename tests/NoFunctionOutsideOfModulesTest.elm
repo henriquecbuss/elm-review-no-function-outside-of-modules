@@ -27,7 +27,7 @@ main =
                         [ Review.Test.error
                             { message = "You're using the `Html.input` function outside of the allowed modules"
                             , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\t`View.Input`" ]
-                            , under = "Html.input [] []"
+                            , under = "Html.input"
                             }
                         ]
         , test "should report an error when using an exposed name outside of module" <|
