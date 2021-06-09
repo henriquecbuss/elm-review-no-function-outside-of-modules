@@ -92,6 +92,26 @@ main =
                             }
                             |> Review.Test.atExactly { start = { row = 7, column = 5 }, end = { row = 7, column = 10 } }
                         ]
+        , test "should report an error when using qualified name with exposed `Html.input`" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html exposing (input)
+import SomeOtherView
+
+main : Html.Html a
+main =
+    input [] []
+"""
+                    |> Review.Test.run htmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `input` function outside of the allowed modules"
+                            , details = [ "The `input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "input"
+                            }
+                            |> Review.Test.atExactly { start = { row = 8, column = 5 }, end = { row = 8, column = 10 } }
+                        ]
         , test "should report an error when using Json.Encode.object outside of module" <|
             \() ->
                 """module Fruits exposing (encodedFruits)
@@ -156,6 +176,19 @@ import Html
 customInput : Html.Html a
 customInput =
     Html.input [] []
+"""
+                    |> Review.Test.run htmlRule
+                    |> Review.Test.expectNoErrors
+        , test "should be successful when using other module's `input` when exposing `Html.input`" <|
+            \() ->
+                """module CustomInput exposing (customInput)
+
+import Html exposing (input)
+import SomeViewModule
+
+customInput : Html.Html a
+customInput =
+    SomeViewModule.input [] []
 """
                     |> Review.Test.run htmlRule
                     |> Review.Test.expectNoErrors

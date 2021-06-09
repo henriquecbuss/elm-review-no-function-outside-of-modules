@@ -191,7 +191,7 @@ expressionVisitor forbiddenFunctionName allowedModules node context =
                         isFromModule =
                             case functionImportStatus of
                                 FunctionWasImportedExplicitly ->
-                                    True
+                                    moduleName == []
 
                                 FunctionWasNotImportedExplicitly ->
                                     moduleName == moduleAlias
