@@ -11,11 +11,15 @@ all =
     let
         htmlRule : Rule
         htmlRule =
-            rule "Html.input" [ "View.Input" ]
+            rule [ ( [ "Html.input" ], [ "View.Input" ] ) ]
+
+        multipleHtmlRule : Rule
+        multipleHtmlRule =
+            rule [ ( [ "Html.input", "Html.textarea" ], [ "View.Input" ] ) ]
 
         fruitRule : Rule
         fruitRule =
-            rule "Json.Encode.object" [ "Fruits.Json" ]
+            rule [ ( [ "Json.Encode.object" ], [ "Fruits.Json" ] ) ]
     in
     describe "NoFunctionOutsideOfModules"
         [ test "should report an error when using Html.input outside of module" <|
@@ -67,8 +71,8 @@ main =
                     |> Review.Test.run htmlRule
                     |> Review.Test.expectErrors
                         [ Review.Test.error
-                            { message = "You're using the `input` function outside of the allowed modules"
-                            , details = [ "The `input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
                             , under = "input"
                             }
                             |> Review.Test.atExactly { start = { row = 7, column = 19 }, end = { row = 7, column = 24 } }
@@ -86,8 +90,8 @@ main =
                     |> Review.Test.run htmlRule
                     |> Review.Test.expectErrors
                         [ Review.Test.error
-                            { message = "You're using the `input` function outside of the allowed modules"
-                            , details = [ "The `input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
                             , under = "input"
                             }
                             |> Review.Test.atExactly { start = { row = 7, column = 5 }, end = { row = 7, column = 10 } }
@@ -106,8 +110,8 @@ main =
                     |> Review.Test.run htmlRule
                     |> Review.Test.expectErrors
                         [ Review.Test.error
-                            { message = "You're using the `input` function outside of the allowed modules"
-                            , details = [ "The `input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
                             , under = "input"
                             }
                             |> Review.Test.atExactly { start = { row = 8, column = 5 }, end = { row = 8, column = 10 } }
@@ -143,8 +147,8 @@ encodedFruits =
                     |> Review.Test.run fruitRule
                     |> Review.Test.expectErrors
                         [ Review.Test.error
-                            { message = "You're using the `Encode.object` function outside of the allowed modules"
-                            , details = [ "The `Encode.object` function is only allowed to be used in these modules:\n\n\t`Fruits.Json`" ]
+                            { message = "You're using the `Json.Encode.object` function outside of the allowed modules"
+                            , details = [ "The `Json.Encode.object` function is only allowed to be used in these modules:\n\n\t`Fruits.Json`" ]
                             , under = "Encode.object"
                             }
                         ]
@@ -161,11 +165,110 @@ encodedFruits =
                     |> Review.Test.run fruitRule
                     |> Review.Test.expectErrors
                         [ Review.Test.error
-                            { message = "You're using the `object` function outside of the allowed modules"
-                            , details = [ "The `object` function is only allowed to be used in these modules:\n\n\t`Fruits.Json`" ]
+                            { message = "You're using the `Json.Encode.object` function outside of the allowed modules"
+                            , details = [ "The `Json.Encode.object` function is only allowed to be used in these modules:\n\n\t`Fruits.Json`" ]
                             , under = "object"
                             }
                             |> Review.Test.atExactly { start = { row = 7, column = 5 }, end = { row = 7, column = 11 } }
+                        ]
+        , test "should report two errors when using Html.input and Html.textarea outside of module" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html
+
+main : Html.Html a
+main =
+    Html.div []
+        [ Html.input [] []
+        , Html.textarea [] []
+        ]
+"""
+                    |> Review.Test.run multipleHtmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "Html.input"
+                            }
+                        , Review.Test.error
+                            { message = "You're using the `Html.textarea` function outside of the allowed modules"
+                            , details = [ "The `Html.textarea` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "Html.textarea"
+                            }
+                        ]
+        , test "should report two errors when using exposed Html.input and exposed Html.textarea outside of module" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html exposing (input, textarea)
+
+main : Html.Html a
+main =
+    Html.div []
+        [ input [] []
+        , textarea [] []
+        ]
+"""
+                    |> Review.Test.run multipleHtmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "input"
+                            }
+                            |> Review.Test.atExactly { start = { row = 8, column = 11 }, end = { row = 8, column = 16 } }
+                        , Review.Test.error
+                            { message = "You're using the `Html.textarea` function outside of the allowed modules"
+                            , details = [ "The `Html.textarea` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "textarea"
+                            }
+                            |> Review.Test.atExactly { start = { row = 9, column = 11 }, end = { row = 9, column = 19 } }
+                        ]
+        , test "should report two errors when using exposed Html.input and Html.textarea outside of module" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html exposing (input)
+
+main : Html.Html a
+main =
+    Html.div []
+        [ input [] []
+        , Html.textarea [] []
+        ]
+"""
+                    |> Review.Test.run multipleHtmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `Html.input` function outside of the allowed modules"
+                            , details = [ "The `Html.input` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "input"
+                            }
+                            |> Review.Test.atExactly { start = { row = 8, column = 11 }, end = { row = 8, column = 16 } }
+                        , Review.Test.error
+                            { message = "You're using the `Html.textarea` function outside of the allowed modules"
+                            , details = [ "The `Html.textarea` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "Html.textarea"
+                            }
+                        ]
+        , test "should report one error when using Html.textarea outside of module" <|
+            \() ->
+                """module Main exposing (main)
+
+import Html
+
+main : Html.Html a
+main =
+    Html.div [] [ Html.textarea [] [] ]
+"""
+                    |> Review.Test.run multipleHtmlRule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = "You're using the `Html.textarea` function outside of the allowed modules"
+                            , details = [ "The `Html.textarea` function is only allowed to be used in these modules:\n\n\t`View.Input`" ]
+                            , under = "Html.textarea"
+                            }
                         ]
         , test "should be successful when using Html.input inside module" <|
             \() ->
@@ -225,5 +328,20 @@ encodedFruits =
     object [ ( "apple", "🍎" ), ( "pineapple", "🍍" ) ]
 """
                     |> Review.Test.run fruitRule
+                    |> Review.Test.expectNoErrors
+        , test "should be successful when using Html.input and Html.textarea inside of module" <|
+            \() ->
+                """module View.Input exposing (main)
+
+import Html
+
+main : Html.Html a
+main =
+    Html.div []
+        [ Html.input [] []
+        , Html.textarea [] []
+        ]
+"""
+                    |> Review.Test.run multipleHtmlRule
                     |> Review.Test.expectNoErrors
         ]

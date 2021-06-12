@@ -4,7 +4,7 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 
 ## Provided rules
 
-- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/NeoVier/elm-review-no-function-outside-of-modules/1.0.1/NoFunctionOutsideOfModules) - Reports uses of certain functions outside of certain modules.
+- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/NeoVier/elm-review-no-function-outside-of-modules/2.0.0/NoFunctionOutsideOfModules) - Reports uses of certain functions outside of certain modules.
 
 ## Configuration
 
@@ -16,7 +16,7 @@ import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ NoFunctionOutsideOfModules.rule "Html.input" [ "View.Input" ]
+    [ NoFunctionOutsideOfModules.rule [ ( [ "Html.input" ], [ "View.Input" ] ) ]
     ]
 ```
 
