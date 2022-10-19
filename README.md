@@ -4,7 +4,7 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 
 ## Provided rules
 
-- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/NeoVier/elm-review-no-function-outside-of-modules/2.0.0/NoFunctionOutsideOfModules) - Reports uses of certain functions outside of certain modules.
+- [`NoFunctionOutsideOfModules`](https://package.elm-lang.org/packages/henriquecbuss/elm-review-no-function-outside-of-modules/1.0.0/NoFunctionOutsideOfModules) - Reports uses of certain functions outside of certain modules.
 
 ## Configuration
 
@@ -25,5 +25,5 @@ config =
 You can try the example configuration above out by running the following command:
 
 ```bash
-elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view
+elm-review --template henriquecbuss/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view
 ```

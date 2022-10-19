@@ -70,7 +70,7 @@ over flexibility.
 You can try this rule out by running the following command:
 
 ```bash
-elm-review --template NeoVier/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view --rules NoFunctionOutsideOfModules
+elm-review --template henriquecbuss/elm-review-no-function-outside-of-modules/example-with-no-html-input-outside-of-view --rules NoFunctionOutsideOfModules
 ```
 
 -}
