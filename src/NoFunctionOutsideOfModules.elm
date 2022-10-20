@@ -6,13 +6,11 @@ module NoFunctionOutsideOfModules exposing (rule)
 
 -}
 
-import Elm.Syntax.Exposing as Exposing exposing (TopLevelExpose)
 import Elm.Syntax.Expression as Expression exposing (Expression)
-import Elm.Syntax.Import exposing (Import)
-import Elm.Syntax.Module as Module exposing (Module)
+import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
+import Review.ModuleNameLookupTable exposing (ModuleNameLookupTable)
 import Review.Rule as Rule exposing (Rule)
-import Set
 
 
 {-| Reports uses of certain functions outside of certain modules.
@@ -64,6 +62,9 @@ so your app looks consistent overall.
 This rule is not useful when you don't think it's worth it to trade consistency
 over flexibility.
 
+Consider changing your API before enabling this rule. It's usually better to have
+a good API that can enforce usage patterns than to rely on a rule.
+
 
 ## Try it out
 
@@ -76,222 +77,85 @@ elm-review --template henriquecbuss/elm-review-no-function-outside-of-modules/ex
 -}
 rule : List ( List String, List String ) -> Rule
 rule config =
-    Rule.newModuleRuleSchema "NoFunctionOutsideOfModules" WithNoForbiddenFunctions
-        |> Rule.withModuleDefinitionVisitor (moduleDefinitionVisitor config)
-        |> Rule.withImportVisitor importVisitor
+    Rule.newModuleRuleSchemaUsingContextCreator "NoFunctionOutsideOfModules" initialContext
         |> Rule.withExpressionEnterVisitor (expressionVisitor config)
         |> Rule.fromModuleRuleSchema
 
 
-type Context
-    = WithNoForbiddenFunctions
-    | WithForbiddenFunctions (List ForbiddenFunction)
-
-
-type alias ForbiddenFunction =
-    { importStatus : ImportStatus
-    , fullName : String
-    , qualifiedName : String
+type alias Context =
+    { lookupTable : ModuleNameLookupTable
+    , moduleName : ModuleName
     }
 
 
-type ImportStatus
-    = FunctionWasImported
-    | FunctionWasImportedExplicitly
-    | FunctionWasNotImported
-
-
-moduleDefinitionVisitor : List ( List String, List String ) -> Node Module -> Context -> ( List (Rule.Error {}), Context )
-moduleDefinitionVisitor config node _ =
-    let
-        moduleName : String
-        moduleName =
-            Node.value node |> Module.moduleName |> String.join "."
-
-        forbiddenFunctionsInThisModule : List String
-        forbiddenFunctionsInThisModule =
-            List.foldr
-                (\( forbiddenFunctions, allowedModules ) currentForbiddenFunctions ->
-                    if List.member moduleName allowedModules then
-                        currentForbiddenFunctions
-
-                    else
-                        forbiddenFunctions ++ currentForbiddenFunctions
-                )
-                []
-                config
-    in
-    ( []
-    , if List.isEmpty forbiddenFunctionsInThisModule then
-        WithNoForbiddenFunctions
-
-      else
-        forbiddenFunctionsInThisModule
-            |> List.map
-                (\forbiddenFunction ->
-                    { importStatus = FunctionWasNotImported
-                    , fullName = forbiddenFunction
-                    , qualifiedName = forbiddenFunction
-                    }
-                )
-            |> WithForbiddenFunctions
-    )
-
-
-getFunctionModuleAndName : String -> ( List String, String )
-getFunctionModuleAndName function =
-    case String.split "." function |> List.reverse of
-        [] ->
-            ( [], "" )
-
-        first :: rest ->
-            ( List.reverse rest, first )
-
-
-importVisitor : Node Import -> Context -> ( List (Rule.Error {}), Context )
-importVisitor node context =
-    case context of
-        WithNoForbiddenFunctions ->
-            ( [], context )
-
-        WithForbiddenFunctions forbiddenFunctionsStatus ->
-            let
-                makeImportStatus : ForbiddenFunction -> ForbiddenFunction
-                makeImportStatus ({ importStatus, fullName } as existingImportStatus) =
-                    case importStatus of
-                        FunctionWasImported ->
-                            existingImportStatus
-
-                        FunctionWasImportedExplicitly ->
-                            existingImportStatus
-
-                        FunctionWasNotImported ->
-                            let
-                                ( functionModuleName, functionName ) =
-                                    getFunctionModuleAndName fullName
-
-                                moduleAlias : String
-                                moduleAlias =
-                                    Node.value node
-                                        |> .moduleAlias
-                                        |> Maybe.map Node.value
-                                        |> Maybe.withDefault functionModuleName
-                                        |> String.join "."
-
-                                qualifiedName : String
-                                qualifiedName =
-                                    moduleAlias ++ "." ++ functionName
-                            in
-                            if (Node.value node |> .moduleName |> Node.value) == functionModuleName then
-                                case Node.value node |> .exposingList |> Maybe.map Node.value of
-                                    Just (Exposing.All _) ->
-                                        { existingImportStatus
-                                            | importStatus = FunctionWasImportedExplicitly
-                                            , qualifiedName = functionName
-                                        }
-
-                                    Just (Exposing.Explicit exposedFunctions) ->
-                                        let
-                                            isForbiddenFunction : Node TopLevelExpose -> Bool
-                                            isForbiddenFunction exposeNode =
-                                                case Node.value exposeNode of
-                                                    Exposing.FunctionExpose exposedFunction ->
-                                                        exposedFunction == functionName
-
-                                                    _ ->
-                                                        False
-                                        in
-                                        if List.any isForbiddenFunction exposedFunctions then
-                                            { existingImportStatus
-                                                | importStatus = FunctionWasImportedExplicitly
-                                                , qualifiedName = functionName
-                                            }
-
-                                        else
-                                            { existingImportStatus
-                                                | importStatus = FunctionWasImported
-                                                , qualifiedName = qualifiedName
-                                            }
-
-                                    Nothing ->
-                                        { existingImportStatus
-                                            | importStatus = FunctionWasImported
-                                            , qualifiedName = qualifiedName
-                                        }
-
-                            else
-                                existingImportStatus
-            in
-            ( []
-            , List.map makeImportStatus forbiddenFunctionsStatus
-                |> WithForbiddenFunctions
-            )
+initialContext : Rule.ContextCreator () Context
+initialContext =
+    Rule.initContextCreator
+        (\lookupTable moduleName () ->
+            { lookupTable = lookupTable
+            , moduleName = moduleName
+            }
+        )
+        |> Rule.withModuleNameLookupTable
+        |> Rule.withModuleName
 
 
 expressionVisitor : List ( List String, List String ) -> Node Expression -> Context -> ( List (Rule.Error {}), Context )
 expressionVisitor config node context =
-    case ( context, Node.value node ) of
-        ( WithForbiddenFunctions forbiddenFunctionsStatus, Expression.FunctionOrValue moduleName functionName ) ->
-            let
-                makeError : ForbiddenFunction -> Maybe (Rule.Error {})
-                makeError { importStatus, fullName, qualifiedName } =
+    case Node.value node of
+        Expression.FunctionOrValue _ functionName ->
+            case Review.ModuleNameLookupTable.fullModuleNameFor context.lookupTable node of
+                Nothing ->
+                    ( [], context )
+
+                Just moduleName ->
                     let
-                        ( qualifiedFunctionModule, forbiddenFunctionName ) =
-                            getFunctionModuleAndName qualifiedName
+                        fullyQualifiedName : String
+                        fullyQualifiedName =
+                            String.join "." moduleName ++ "." ++ functionName
 
-                        isFromModule : Bool
-                        isFromModule =
-                            case importStatus of
-                                FunctionWasNotImported ->
-                                    False
+                        currentModuleName : String
+                        currentModuleName =
+                            String.join "." context.moduleName
 
-                                FunctionWasImported ->
-                                    moduleName == qualifiedFunctionModule
+                        modulesToUseInErrorDetails : List String
+                        modulesToUseInErrorDetails =
+                            List.filterMap
+                                (\( forbiddenFunctions, allowedModules ) ->
+                                    if
+                                        List.member fullyQualifiedName forbiddenFunctions
+                                            && not (List.member currentModuleName allowedModules)
+                                    then
+                                        Just allowedModules
 
-                                FunctionWasImportedExplicitly ->
-                                    moduleName == []
-
-                        isForbiddenFunction : Bool
-                        isForbiddenFunction =
-                            forbiddenFunctionName == functionName
+                                    else
+                                        Nothing
+                                )
+                                config
+                                |> List.concat
                     in
-                    if isFromModule && isForbiddenFunction then
-                        let
-                            allowedModules : List String
-                            allowedModules =
-                                List.foldr
-                                    (\( forbiddenFunctions, moduleWhitelist ) currentAllowedModules ->
-                                        if List.member fullName forbiddenFunctions then
-                                            moduleWhitelist ++ currentAllowedModules
+                    if List.isEmpty modulesToUseInErrorDetails then
+                        ( [], context )
 
-                                        else
-                                            currentAllowedModules
-                                    )
-                                    []
-                                    config
-                                    |> Set.fromList
-                                    |> Set.toList
-                        in
-                        Node.range node
-                            |> Rule.error
-                                { message = "You're using the `" ++ fullName ++ "` function outside of the allowed modules"
+                    else
+                        ( [ Rule.error
+                                { message =
+                                    "You're using the `"
+                                        ++ fullyQualifiedName
+                                        ++ "` function outside of the allowed modules"
                                 , details =
                                     [ "The `"
-                                        ++ fullName
+                                        ++ fullyQualifiedName
                                         ++ "` function is only allowed to be used in these modules:\n\n"
-                                        ++ (List.map (\allowedModule -> "\t`" ++ allowedModule ++ "`") allowedModules
+                                        ++ (List.map (\allowedModule -> "\t`" ++ allowedModule ++ "`") modulesToUseInErrorDetails
                                                 |> String.join "\n"
                                            )
                                     ]
                                 }
-                            |> Just
-
-                    else
-                        Nothing
-            in
-            ( List.filterMap makeError forbiddenFunctionsStatus
-            , context
-            )
+                                (Node.range node)
+                          ]
+                        , context
+                        )
 
         _ ->
             ( [], context )
