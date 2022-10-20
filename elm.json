@@ -3,7 +3,7 @@
     "name": "henriquecbuss/elm-review-no-function-outside-of-modules",
     "summary": "Provides elm-review rules to forbid using functions outside of certain modules",
     "license": "BSD-3-Clause",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "exposed-modules": [
         "NoFunctionOutsideOfModules"
     ],
