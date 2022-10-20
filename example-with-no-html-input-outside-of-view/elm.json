@@ -7,9 +7,9 @@
     "dependencies": {
         "direct": {
             "elm/core": "1.0.5",
-            "henriquecbuss/elm-review-no-function-outside-of-modules": "1.0.0",
             "jfmengels/elm-review": "2.9.2",
-            "stil4m/elm-syntax": "7.2.9"
+            "stil4m/elm-syntax": "7.2.9",
+            "henriquecbuss/elm-review-no-function-outside-of-modules": "1.0.1"
         },
         "indirect": {
             "elm/bytes": "1.0.8",
