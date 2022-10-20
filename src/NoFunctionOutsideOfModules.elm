@@ -64,6 +64,9 @@ so your app looks consistent overall.
 This rule is not useful when you don't think it's worth it to trade consistency
 over flexibility.
 
+Consider changing your API before enabling this rule. It's usually better to have
+a good API that can enforce usage patterns than to rely on a rule.
+
 
 ## Try it out
 
